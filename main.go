@@ -21,6 +21,8 @@ const MB = 1024 * 1024
 
 var Version string
 var GitCommit string
+
+// Set via VERBOSE env var
 var Verbose bool = false
 
 var MinSizeForLargeFile = int64(50 * MB)
@@ -53,6 +55,8 @@ func LambdaHandler(ctx context.Context, evt *events.S3Event) (*LambdaResponse, e
 		resp, err := handleEvent(ctx, evt, s3.New(sess))
 		if err != nil {
 			debugLogf("%+v", err)
+			err = errors.Wrap(err, "LambdaHandler ERROR")
+			log.Println(err)
 		}
 		return resp, err
 	}
