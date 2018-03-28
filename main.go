@@ -86,6 +86,11 @@ func getTagForObject(obj *events.S3Entity) *s3.PutObjectTaggingInput {
 		filetype = "largefile"
 	}
 	if filetype != "" {
+		var versionId *string = nil
+		// cannot pass through empty string to aws
+		if obj.Object.VersionID != "" {
+			versionId = &obj.Object.VersionID
+		}
 		return &s3.PutObjectTaggingInput{
 			Bucket: &obj.Bucket.Name,
 			Key:    &obj.Object.Key,
@@ -94,7 +99,7 @@ func getTagForObject(obj *events.S3Entity) *s3.PutObjectTaggingInput {
 					{Key: aws.String(filetypeKey), Value: aws.String(filetype)},
 				},
 			},
-			VersionId: &obj.Object.VersionID,
+			VersionId: versionId,
 		}
 	}
 	return nil
