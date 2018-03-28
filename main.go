@@ -44,8 +44,8 @@ func init() {
 }
 
 type LambdaResponse struct {
-	Count   int    `json:"count"`
-	Message string `json:"message"`
+	Paths   []string `json:"paths"`
+	Message string   `json:"message"`
 }
 
 func LambdaHandler(ctx context.Context, evt *events.S3Event) (*LambdaResponse, error) {
@@ -57,6 +57,8 @@ func LambdaHandler(ctx context.Context, evt *events.S3Event) (*LambdaResponse, e
 			debugLogf("%+v", err)
 			err = errors.Wrap(err, "LambdaHandler ERROR")
 			log.Println(err)
+		} else if resp != nil && resp.Paths != nil && len(resp.Paths) > 0 {
+			log.Printf("%+v", resp)
 		}
 		return resp, err
 	}
@@ -82,7 +84,7 @@ func debugLogf(fmt string, args ...interface{}) {
 // run the full lambda event handler
 func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API) (*LambdaResponse, error) {
 	debugLogf("%s", debugMarshal(evt))
-	tagsApplied := 0
+	paths = make([]string, 1)
 	for _, rec := range evt.Records {
 		tagForObject := getTagForObject(&rec.S3)
 		if tagForObject != nil {
@@ -91,10 +93,10 @@ func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API)
 				return nil, errors.Wrap(err, fmt.Sprintf("put object tagging failed (%s)", entityPath(&rec.S3)))
 			}
 			debugLogf("successfully applied tag to %s (%#v)", entityPath(&rec.S3), output.String())
-			tagsApplied++
+			paths = append(paths, entityPath(&rec.S3))
 		}
 	}
-	return &LambdaResponse{Count: tagsApplied, Message: "completed successfully"}, nil
+	return &LambdaResponse{Paths: paths, Message: "completed successfully"}, nil
 }
 
 // if the S3Entity matches one of our regexes, return the object tag(s) to apply
