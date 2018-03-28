@@ -84,7 +84,7 @@ func debugLogf(fmt string, args ...interface{}) {
 // run the full lambda event handler
 func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API) (*LambdaResponse, error) {
 	debugLogf("%s", debugMarshal(evt))
-	paths := make([]string, 1)
+	paths := make([]string, 0, 1)
 	for _, rec := range evt.Records {
 		tagForObject := getTagForObject(&rec.S3)
 		if tagForObject != nil {
@@ -97,7 +97,7 @@ func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API)
 		}
 	}
 	if len(paths) == 0 {
-		return &LambdaResponse{Paths: nil, Message: "no matches"}, nil
+		return &LambdaResponse{Paths: nil, Message: "no matches - ok"}, nil
 	}
 	return &LambdaResponse{Paths: paths, Message: "completed successfully"}, nil
 }
