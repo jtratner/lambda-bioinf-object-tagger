@@ -50,7 +50,7 @@ type LambdaResponse struct {
 
 func LambdaHandler(ctx context.Context, evt *events.S3Event) (*LambdaResponse, error) {
 	if sess, err := session.NewSession(); err != nil {
-		return nil, errors.Wrap(err, "NewSession generation")
+		return nil, errors.Wrap(err, "NewSession generation failed")
 	} else {
 		resp, err := handleEvent(ctx, evt, s3.New(sess))
 		if err != nil {
@@ -88,7 +88,7 @@ func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API)
 		if tagForObject != nil {
 			output, err := client.PutObjectTaggingWithContext(ctx, tagForObject)
 			if err != nil {
-				return nil, errors.Wrap(err, "put object tagging failed")
+				return nil, errors.Wrap(err, fmt.Sprintf("put object tagging failed (%s)", entityPath(&rec.S3)))
 			}
 			debugLogf("successfully applied tag to %s (%#v)", entityPath(&rec.S3), output.String())
 			tagsApplied++
