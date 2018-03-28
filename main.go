@@ -96,6 +96,9 @@ func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API)
 			paths = append(paths, entityPath(&rec.S3))
 		}
 	}
+	if len(paths) == 0 {
+		return &LambdaResponse{Paths: nil, Message: "no matches"}, nil
+	}
 	return &LambdaResponse{Paths: paths, Message: "completed successfully"}, nil
 }
 
