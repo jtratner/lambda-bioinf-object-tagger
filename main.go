@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/pkg/errors"
 	"log"
 	"regexp"
 )
@@ -44,9 +45,8 @@ type LambdaResponse struct {
 }
 
 func LambdaHandler(ctx context.Context, evt *events.S3Event) (*LambdaResponse, error) {
-	debugLogf("%s", &evt.String())
 	if sess, err := session.NewSession(); err != nil {
-		return nil, err
+		return nil, errors.Wrap("NewSession generation", err)
 	} else {
 		return handleEvent(ctx, evt, s3.New(sess))
 	}
@@ -74,7 +74,7 @@ func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API)
 		if tagForObject != nil {
 			output, err := client.PutObjectTaggingWithContext(ctx, tagForObject)
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap("put object tagging", err)
 			}
 			debugLogf("successfully applied tag to %s (%#v)", entityPath(&rec.S3), output.String())
 			tagsApplied++
