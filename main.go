@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/pkg/errors"
 	"log"
+	"os"
 	"regexp"
 )
 
@@ -34,7 +36,7 @@ func entityPath(obj *events.S3Entity) string {
 
 func init() {
 	log.SetPrefix(fmt.Sprintf("Version:%s|Commit:%s|", Version, GitCommit))
-	if os.GetEnv("VERBOSE") != "" {
+	if os.Getenv("VERBOSE") != "" {
 		Verbose = true
 	}
 }
@@ -46,9 +48,13 @@ type LambdaResponse struct {
 
 func LambdaHandler(ctx context.Context, evt *events.S3Event) (*LambdaResponse, error) {
 	if sess, err := session.NewSession(); err != nil {
-		return nil, errors.Wrap("NewSession generation", err)
+		return nil, errors.Wrap(err, "NewSession generation")
 	} else {
-		return handleEvent(ctx, evt, s3.New(sess))
+		resp, err := handleEvent(ctx, evt, s3.New(sess))
+		if err != nil {
+			debugLogf("%+v", err)
+		}
+		return resp, err
 	}
 }
 
@@ -56,7 +62,11 @@ func debugMarshal(x interface{}) string {
 	if !Verbose {
 		return ""
 	}
-	return json.MarshalIndent(x, "", " ")
+	resp, err := json.MarshalIndent(x, "", " ")
+	if err != nil {
+		return fmt.Sprintf("<MARSHAL ERROR: %s>%v", err, x)
+	}
+	return string(resp)
 }
 
 func debugLogf(fmt string, args ...interface{}) {
@@ -74,7 +84,7 @@ func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API)
 		if tagForObject != nil {
 			output, err := client.PutObjectTaggingWithContext(ctx, tagForObject)
 			if err != nil {
-				return nil, errors.Wrap("put object tagging", err)
+				return nil, errors.Wrap(err, "put object tagging failed")
 			}
 			debugLogf("successfully applied tag to %s (%#v)", entityPath(&rec.S3), output.String())
 			tagsApplied++
