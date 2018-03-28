@@ -14,10 +14,13 @@ import (
 )
 
 const FILETYPE_KEY = "filetype"
+const MB = 1024 * 1024
 
 var Version string
 var GitCommit string
 var Verbose bool = true
+
+var MinSizeForLargeFile = int64(50 * MB)
 
 var REGEXES = map[string]*regexp.Regexp{
 	"fastq": regexp.MustCompile(".*.fastq(.gz)?$"),
@@ -69,24 +72,32 @@ func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API)
 }
 
 // if the S3Entity matches one of our regexes, return the object tag(s) to apply
+// if it's larger than MinSizeForLargeFile, apply largefile filetype
 func getTagForObject(obj *events.S3Entity) *s3.PutObjectTaggingInput {
+	var filetype string
 	filetypeKey := FILETYPE_KEY
-	for filetype, regex := range REGEXES {
+	for potentialFiletype, regex := range REGEXES {
 		if regex.MatchString(obj.Object.Key) {
-			return &s3.PutObjectTaggingInput{
-				Bucket: &obj.Bucket.Name,
-				Key:    &obj.Object.Key,
-				Tagging: &s3.Tagging{
-					TagSet: []*s3.Tag{
-						{Key: aws.String(filetypeKey), Value: aws.String(filetype)},
-					},
+			filetype = potentialFiletype
+			break
+		}
+	}
+	if filetype == "" && obj.Object.Size >= MinSizeForLargeFile {
+		filetype = "largefile"
+	}
+	if filetype != "" {
+		return &s3.PutObjectTaggingInput{
+			Bucket: &obj.Bucket.Name,
+			Key:    &obj.Object.Key,
+			Tagging: &s3.Tagging{
+				TagSet: []*s3.Tag{
+					{Key: aws.String(filetypeKey), Value: aws.String(filetype)},
 				},
-				VersionId: &obj.Object.VersionID,
-			}
+			},
+			VersionId: &obj.Object.VersionID,
 		}
 	}
 	return nil
-
 }
 
 func main() {
