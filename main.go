@@ -17,6 +17,7 @@ const FILETYPE_KEY = "filetype"
 
 var Version string
 var GitCommit string
+var Verbose bool = true
 
 var REGEXES = map[string]*regexp.Regexp{
 	"fastq": regexp.MustCompile(".*.fastq(.gz)?$"),
@@ -44,6 +45,12 @@ func LambdaHandler(ctx context.Context, evt *events.S3Event) (*LambdaResponse, e
 	}
 }
 
+func debugLogf(fmt string, args ...interface{}) {
+	if Verbose {
+		log.Printf(fmt, args...)
+	}
+}
+
 // run the full lambda event handler
 func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API) (*LambdaResponse, error) {
 	tagsApplied := 0
@@ -54,7 +61,7 @@ func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API)
 			if err != nil {
 				return nil, err
 			}
-			log.Printf("successfully applied tag to %s (%#v)", entityPath(&rec.S3), output.String())
+			debugLogf("successfully applied tag to %s (%#v)", entityPath(&rec.S3), output.String())
 			tagsApplied++
 		}
 	}
