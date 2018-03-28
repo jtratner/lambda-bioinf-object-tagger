@@ -18,7 +18,7 @@ const MB = 1024 * 1024
 
 var Version string
 var GitCommit string
-var Verbose bool = true
+var Verbose bool = false
 
 var MinSizeForLargeFile = int64(50 * MB)
 
@@ -33,6 +33,9 @@ func entityPath(obj *events.S3Entity) string {
 
 func init() {
 	log.SetPrefix(fmt.Sprintf("Version:%s|Commit:%s|", Version, GitCommit))
+	if os.GetEnv("VERBOSE") != "" {
+		Verbose = true
+	}
 }
 
 type LambdaResponse struct {
@@ -41,11 +44,19 @@ type LambdaResponse struct {
 }
 
 func LambdaHandler(ctx context.Context, evt *events.S3Event) (*LambdaResponse, error) {
+	debugLogf("%s", &evt.String())
 	if sess, err := session.NewSession(); err != nil {
 		return nil, err
 	} else {
 		return handleEvent(ctx, evt, s3.New(sess))
 	}
+}
+
+func debugMarshal(x interface{}) string {
+	if !Verbose {
+		return ""
+	}
+	return json.MarshalIndent(x, "", " ")
 }
 
 func debugLogf(fmt string, args ...interface{}) {
@@ -56,6 +67,7 @@ func debugLogf(fmt string, args ...interface{}) {
 
 // run the full lambda event handler
 func handleEvent(ctx context.Context, evt *events.S3Event, client s3iface.S3API) (*LambdaResponse, error) {
+	debugLogf("%s", debugMarshal(evt))
 	tagsApplied := 0
 	for _, rec := range evt.Records {
 		tagForObject := getTagForObject(&rec.S3)
